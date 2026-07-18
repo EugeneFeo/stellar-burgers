@@ -16,6 +16,7 @@ import {
 import { AppHeader, IngredientDetails, Modal, OrderInfo } from '@components';
 
 import { getIngredients } from '../../services/slices/ingredients-slice';
+import { fetchUser } from '../../services/actions/user';
 import { useDispatch } from '../../services/store';
 import { ProtectedRoute } from '../protected-route/protected-route';
 
@@ -23,7 +24,6 @@ import '../../index.css';
 import styles from './app.module.css';
 
 const App = () => {
-  /** TODO: взять переменные из стора */
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -32,6 +32,7 @@ const App = () => {
 
   useEffect(() => {
     dispatch(getIngredients());
+    dispatch(fetchUser());
   }, [dispatch]);
 
   const closeModal = () => {
