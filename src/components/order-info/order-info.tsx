@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 
 import { TIngredient, TOrder } from '@utils-types';
 
-import { getOrderByNumberApi } from '../../utils/burger-api';
 import { useSelector } from '../../services/store';
+import { getOrderByNumberApi } from '../../utils/burger-api';
 import { OrderInfoUI } from '../ui/order-info';
 import { Preloader } from '../ui/preloader';
 
@@ -14,15 +14,26 @@ export const OrderInfo: FC = () => {
   const ingredients = useSelector((state) => state.ingredients.ingredients);
 
   const [orderData, setOrderData] = useState<TOrder | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!number) {
       return;
     }
 
-    getOrderByNumberApi(Number(number)).then((data) => {
-      setOrderData(data.orders[0]);
-    });
+    setRequestError(null);
+
+    getOrderByNumberApi(Number(number))
+      .then((data) => {
+        setOrderData(data.orders[0]);
+      })
+      .catch((error: unknown) => {
+        setRequestError(
+          error instanceof Error
+            ? error.message
+            : 'Не удалось загрузить информацию о заказе'
+        );
+      });
   }, [number]);
 
   const orderInfo = useMemo(() => {
@@ -71,6 +82,10 @@ export const OrderInfo: FC = () => {
       total
     };
   }, [orderData, ingredients]);
+
+  if (requestError) {
+    return <p className='text text_type_main-default'>{requestError}</p>;
+  }
 
   if (!orderInfo) {
     return <Preloader />;
