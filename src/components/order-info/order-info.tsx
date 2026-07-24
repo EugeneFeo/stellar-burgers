@@ -1,25 +1,45 @@
-import { FC, useMemo } from 'react';
-import { Preloader } from '../ui/preloader';
+import { FC, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+
+import { TIngredient, TOrder } from '@utils-types';
+
+import { useSelector } from '../../services/store';
+import { getOrderByNumberApi } from '../../utils/burger-api';
 import { OrderInfoUI } from '../ui/order-info';
-import { TIngredient } from '@utils-types';
+import { Preloader } from '../ui/preloader';
 
 export const OrderInfo: FC = () => {
-  /** TODO: взять переменные orderData и ingredients из стора */
-  const orderData = {
-    createdAt: '',
-    ingredients: [],
-    _id: '',
-    status: '',
-    name: '',
-    updatedAt: 'string',
-    number: 0
-  };
+  const { number } = useParams();
 
-  const ingredients: TIngredient[] = [];
+  const ingredients = useSelector((state) => state.ingredients.ingredients);
 
-  /* Готовим данные для отображения */
+  const [orderData, setOrderData] = useState<TOrder | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!number) {
+      return;
+    }
+
+    setRequestError(null);
+
+    getOrderByNumberApi(Number(number))
+      .then((data) => {
+        setOrderData(data.orders[0]);
+      })
+      .catch((error: unknown) => {
+        setRequestError(
+          error instanceof Error
+            ? error.message
+            : 'Не удалось загрузить информацию о заказе'
+        );
+      });
+  }, [number]);
+
   const orderInfo = useMemo(() => {
-    if (!orderData || !ingredients.length) return null;
+    if (!orderData || !ingredients.length) {
+      return null;
+    }
 
     const date = new Date(orderData.createdAt);
 
@@ -28,17 +48,21 @@ export const OrderInfo: FC = () => {
     };
 
     const ingredientsInfo = orderData.ingredients.reduce(
-      (acc: TIngredientsWithCount, item) => {
-        if (!acc[item]) {
-          const ingredient = ingredients.find((ing) => ing._id === item);
-          if (ingredient) {
-            acc[item] = {
-              ...ingredient,
-              count: 1
-            };
-          }
-        } else {
-          acc[item].count++;
+      (acc: TIngredientsWithCount, ingredientId: string) => {
+        if (acc[ingredientId]) {
+          acc[ingredientId].count += 1;
+          return acc;
+        }
+
+        const ingredient = ingredients.find(
+          (item) => item._id === ingredientId
+        );
+
+        if (ingredient) {
+          acc[ingredientId] = {
+            ...ingredient,
+            count: 1
+          };
         }
 
         return acc;
@@ -47,7 +71,7 @@ export const OrderInfo: FC = () => {
     );
 
     const total = Object.values(ingredientsInfo).reduce(
-      (acc, item) => acc + item.price * item.count,
+      (sum, ingredient) => sum + ingredient.price * ingredient.count,
       0
     );
 
@@ -58,6 +82,10 @@ export const OrderInfo: FC = () => {
       total
     };
   }, [orderData, ingredients]);
+
+  if (requestError) {
+    return <p className='text text_type_main-default'>{requestError}</p>;
+  }
 
   if (!orderInfo) {
     return <Preloader />;
